@@ -1,0 +1,1772 @@
+diff -Naur Original/ns-2.34/common/packet.h SimuTools/ns-2.34/common/packet.h
+--- Original/ns-2.34/common/packet.h	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/common/packet.h	2012-10-10 19:44:14.038492458 +0200
+@@ -182,8 +182,15 @@
+ 	// AOMDV packet
+ static const packet_t PT_AOMDV = 61;
+ 
++
++// **** DSRC code start **** //
++  	// DSRC packet
++static const packet_t PT_DSRCApp = 62;
++// **** DSRC code end **** //
++
++
+         // insert new packet types here
+-static packet_t       PT_NTYPE = 62; // This MUST be the LAST one
++static packet_t       PT_NTYPE = 63; // This MUST be the LAST one
+ 
+ enum packetClass
+ {
+@@ -382,6 +389,11 @@
+ 		
+ 		// AOMDV patch
+ 		name_[PT_AOMDV]= "AOMDV";
++		
++		// **** DSRC code start **** //
++		// DSRC packet
++		name_[PT_DSRCApp]= "DSRCApp";
++		// **** DSRC code end **** //
+ 
+ 		name_[PT_NTYPE]= "undefined";
+ 	}
+@@ -634,6 +646,15 @@
+ 
+ 	ModulationScheme mod_scheme_;
+ 	inline ModulationScheme& mod_scheme() { return (mod_scheme_); }
++
++
++	// **** DSRC code start **** //
++	//DSRC variables Appended to the common header
++	int type_dsrc;
++	int channel;
++	int type_agent_;
++	// **** DSRC code end  **** //
++		
+ };
+ 
+ 
+diff -Naur Original/ns-2.34/dsrc/channel_sched.cc SimuTools/ns-2.34/dsrc/channel_sched.cc
+--- Original/ns-2.34/dsrc/channel_sched.cc	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/channel_sched.cc	2012-10-10 19:41:25.359120970 +0200
+@@ -0,0 +1,92 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#include "channel_sched.h"
++
++
++void
++ChannelScheduler::addSCH (int c)
++{
++	
++	// Check if the channel number correspondance to one of the 'legal' SCH.
++	// No need to check if the channel is already active.
++	if (c >= 0 && c < SCH_NUMBER)
++	{
++		activeSCH [c] = 1;
++		nbrActiveChannels ++;
++	}
++}
++
++void
++ChannelScheduler::removeSCH (int c)
++{
++	if (c >= 0 && c < SCH_NUMBER)
++	{
++		activeSCH [c] = 0;
++		nbrActiveChannels --;
++	}
++}
++
++
++void
++ChannelScheduler::reset ()
++{
++	for (int i = 0; i < SCH_NUMBER; i++)
++		activeSCH [i] = 0;
++
++	nbrActiveChannels = 0;
++}
+diff -Naur Original/ns-2.34/dsrc/channel_sched.h SimuTools/ns-2.34/dsrc/channel_sched.h
+--- Original/ns-2.34/dsrc/channel_sched.h	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/channel_sched.h	2012-10-10 19:41:44.578498880 +0200
+@@ -0,0 +1,89 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#ifndef ns_channel_sched_h
++#define ns_channel_sched_h
++
++#include <string.h>
++#include "config.h"
++#include "dsrc_const.h"
++
++
++class ChannelScheduler {
++  public:
++
++	ChannelScheduler() {	
++		reset();
++	}
++
++
++	~ChannelScheduler() {
++	}
++
++	virtual int getNextSCH (int ) = 0;
++	void addSCH (int );
++
++  protected:
++	
++	void reset();
++	void removeSCH (int );
++
++	bool activeSCH [SCH_NUMBER];
++	int nbrActiveChannels;
++};
++
++#endif
+diff -Naur Original/ns-2.34/dsrc/dsrc_app.cc SimuTools/ns-2.34/dsrc/dsrc_app.cc
+--- Original/ns-2.34/dsrc/dsrc_app.cc	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/dsrc_app.cc	2012-10-10 19:41:56.568496682 +0200
+@@ -0,0 +1,295 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#include "random.h"
++#include "time.h"
++#include "dsrc_app.h"
++
++
++// DSRCApp header packet is not used in the scope of this tool implementation.
++int hdr_dsrcapp::offset_;
++static class DSRCAppHeaderClass : public PacketHeaderClass {
++public:
++	DSRCAppHeaderClass() : PacketHeaderClass("PacketHeader/DSRCApp", 
++					      sizeof(hdr_dsrcapp)) {
++		bind_offset(&hdr_dsrcapp::offset_);
++	}
++} class_dsrcapphdr;
++
++
++
++static class DSRCAppClass : public TclClass {
++public:
++	DSRCAppClass() : TclClass("Agent/DSRCApp") {}
++	TclObject* create(int, const char*const*) {
++		return (new DSRCApp());
++	}
++} class_DSRCApp;
++
++
++static int idG=0;
++
++DSRCApp::DSRCApp() : Agent(PT_DSRCApp), btimer_(this)
++{
++
++	multihop_dissemination_=0;
++	bind("packetSize_", &size_);
++	bind("channel_", &channel_);
++	bind("interval_", &interval_);
++        bind("modulationScheme_", &modulationScheme_);
++	bind("type_dsrc_", &type_dsrc_);
++	bind("multihop_", &multihop_dissemination_);
++	bind("type_agent_", &type_agent_);
++
++	seq_nr_=0;
++	id_=idG;
++	idG++;
++		
++	for (int i=0; i<MAX_APPLICATIONS; i++)
++		pkt_history_[i] = -1;
++
++  	pnode_ = (MobileNode*)Node::get_node_by_address(((int)here_.addr_));
++
++
++}
++
++
++
++int DSRCApp::command(int argc, const char*const* argv)
++{
++
++  if (argc == 2) {
++    if (strcmp(argv[1], "send") == 0) {
++		sendBroadcast();
++      return (TCL_OK);
++    }
++  }
++
++  // If the command hasn't been processed by DSRCAppt()::command,
++  // call the command() function for the base class
++  return (Agent::command(argc, argv));
++} 
++ 
++
++
++void DSRCApp::recv(Packet* pkt, Handler*)
++{
++	
++	if ((multihop_dissemination_) and (check_is_to_forward(pkt))) 
++		forward(pkt);
++	else	
++		Packet::free(pkt);     
++	
++}
++
++
++
++void DSRCApp::sendBroadcast()
++{	
++      
++      Packet* pkt = allocpkt();
++      hdr_cmn *ch = HDR_CMN(pkt); 
++      hdr_ip* iph = HDR_IP(pkt);
++      hdr_dsrcapp* aph = HDR_DSRCAPP(pkt); 
++      MobileNode*  pnode = (MobileNode*)Node::get_node_by_address(((int)here_.addr_));
++
++
++      iph->src_.addr_ = here_.addr_;
++      iph->dst_.addr_ = IP_BROADCAST;
++      iph->dst_.port_ = this->port();
++      
++
++      ch->next_hop() = IP_BROADCAST;
++      ch->ptype() = PT_DSRCApp;
++      ch->channel = channel_;
++      ch->size() = size_;
++      ch->type_dsrc = type_dsrc_;
++      ch->type_agent_ = type_agent_;
++
++      aph->seq_nr=seq_nr_;
++      aph->x_src=pnode->X();
++      aph->y_src=pnode->Y();
++      aph->app_id=id_;
++    
++      pkt_history_[id_]=seq_nr_;
++      seq_nr_++;
++
++      switch (modulationScheme_)
++      {
++    	case BPSK:   ch->mod_scheme_ = BPSK;break;
++        case QPSK:   ch->mod_scheme_ = QPSK;break;
++    	case QAM16:  ch->mod_scheme_ = QAM16;break;
++    	case QAM64:  ch->mod_scheme_ = QAM64;break;
++    	default :
++      	  ch->mod_scheme_ = BPSK;
++      }
++      
++      
++      btimer_.schedule(interval_);
++
++      send(pkt, (Handler*) 0);
++
++}
++
++//Methods for flooding dissemination
++void DSRCApp::forward(Packet* p)
++{	
++      
++      Packet* pkt = allocpkt();
++      hdr_cmn *ch = HDR_CMN(pkt); 
++      hdr_ip* iph = HDR_IP(pkt);
++      hdr_dsrcapp* aph = HDR_DSRCAPP(pkt);
++      MobileNode*  pnode = (MobileNode*)Node::get_node_by_address(((int)here_.addr_));
++
++
++      hdr_cmn *ch_or = HDR_CMN(p);
++      hdr_ip* iph_or = HDR_IP(p);
++      hdr_dsrcapp* aph_or = HDR_DSRCAPP(p);
++
++      iph->src_.addr_ = here_.addr_;
++      iph->dst_.addr_ = IP_BROADCAST;
++      iph->dst_.port_ = this->port();
++      
++      ch->next_hop() = IP_BROADCAST;
++      ch->ptype()    = ch_or->ptype();
++      ch->channel    = ch_or->channel;
++      ch->size()     = ch_or->size_;
++      ch->type_dsrc  = ch_or->type_dsrc;
++      ch->uid_	     = ch_or->uid();
++      ch->type_agent_ = ch_or->type_agent_;
++
++      if (ch_or->type_agent_ == 1)
++		ch->channel = -99;
++
++      aph->seq_nr = aph_or->seq_nr;
++      aph->x_src  = aph_or->x_src;
++      aph->y_src  = aph_or->y_src;
++      aph->app_id = aph_or->app_id;
++     
++      switch (modulationScheme_)
++      {
++    	case BPSK:   ch->mod_scheme_ = BPSK;break;
++        case QPSK:   ch->mod_scheme_ = QPSK;break;
++    	case QAM16:  ch->mod_scheme_ = QAM16;break;
++    	case QAM64:  ch->mod_scheme_ = QAM64;break;
++    	default :
++      	  ch->mod_scheme_ = BPSK;
++      }
++      
++          
++      send(pkt, (Handler*) 0);
++
++}
++
++
++
++bool
++DSRCApp::check_is_to_forward(Packet *p) {
++
++	hdr_dsrcapp* aph = HDR_DSRCAPP(p);
++        MobileNode*  pnode = (MobileNode*)Node::get_node_by_address(((int)here_.addr_));
++
++	double distance_traveled=distance(aph->x_src,aph->y_src,pnode->X(),pnode->Y());
++
++	if ((distance_traveled > PACKET_HORIZON) or (!check_is_new(p)))
++		return false;
++	else
++		return true;
++}
++
++
++
++bool
++DSRCApp::check_is_new(Packet *p) {
++	hdr_dsrcapp* aph = HDR_DSRCAPP(p);
++
++	int id=aph->app_id;
++
++	if (id < MAX_APPLICATIONS) {
++
++		if (pkt_history_[id] < aph->seq_nr) {
++
++			pkt_history_[id] = aph->seq_nr;
++
++			return true;
++
++		} else 
++			return false; 
++		
++	} else
++		return false;
++}
++
++
++
++double
++DSRCApp::distance(double x, double y, double x1, double y1) {
++	return sqrt(pow(x-x1,2)+pow(y-y1,2));
++}
++
++
++// Timers methods
++void
++DSRCBroadcastTimer::handle(Event*) {	
++	handler->sendBroadcast();
++}
++
++
++void
++DSRCBroadcastTimer::schedule(double interval) {
++	Scheduler::instance().schedule(this, &intr, interval);
++}
+diff -Naur Original/ns-2.34/dsrc/dsrc_app.h SimuTools/ns-2.34/dsrc/dsrc_app.h
+--- Original/ns-2.34/dsrc/dsrc_app.h	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/dsrc_app.h	2012-10-10 19:44:36.839122085 +0200
+@@ -0,0 +1,154 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#ifndef ns_dsrc_app_h
++#define ns_dsrc_app_h
++
++#include "agent.h"
++#include "tclcl.h"
++#include "packet.h"
++#include "address.h"
++#include "ip.h"
++#include "mobilenode.h"
++
++#define PACKET_HORIZON    1000
++#define MAX_APPLICATIONS  100
++
++
++class DSRCApp;
++class DSRCBroadcastTimer;
++
++
++// Created a DSRCApp packet which is not used in this tool but could be useful for further DSRC-related applications developement and testing.
++
++// Note that 3 DSRC-related variables were appended to the common header (see common/packet.h).
++
++#define HDR_DSRCAPP(p)   ((struct hdr_dsrcapp*)hdr_dsrcapp::access(p))
++
++struct hdr_dsrcapp {
++		
++	int seq_nr;
++	int app_id;
++	double x_src;
++	double y_src;
++
++	// Header access methods
++	static int offset_; // required by PacketHeaderManager
++
++	inline static int& offset() { return offset_; }
++	inline static hdr_dsrcapp* access(const Packet* p) {
++		return (hdr_dsrcapp*) p->access(offset_);
++	}
++};
++
++
++
++class DSRCBroadcastTimer : public Handler {
++public:
++        DSRCBroadcastTimer(DSRCApp* a) : handler(a)  {}
++        void    schedule(double interval);
++        void    handle(Event*);
++private:
++        DSRCApp    *handler;
++        Event   intr;
++};
++
++
++
++
++class DSRCApp : public Agent {
++
++	friend class DSRCBroadcastTimer;
++
++public:
++	DSRCApp();
++
++	//Custom Functions
++	void 	sendBroadcast();
++	void 	forward(Packet* p);
++
++	//Mandatory Functions
++	virtual int command(int argc, const char*const* argv);
++	virtual void recv(Packet*, Handler*);
++
++
++protected:
++
++	double interval_;
++	int channel_;
++	int size_;
++	int id_;
++	int modulationScheme_;
++	int type_dsrc_;
++	int seq_nr_;
++	int pkt_history_[MAX_APPLICATIONS];
++	int multihop_dissemination_;
++	int type_agent_;
++
++	DSRCBroadcastTimer btimer_;
++	MobileNode *pnode_;
++
++private:
++
++	bool 	check_is_new(Packet *p);
++	bool    check_is_to_forward(Packet *p);
++	double	distance(double x, double y, double x1, double y2);
++
++
++};
++
++#endif
+diff -Naur Original/ns-2.34/dsrc/dsrc.cc SimuTools/ns-2.34/dsrc/dsrc.cc
+--- Original/ns-2.34/dsrc/dsrc.cc	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/dsrc.cc	2012-10-10 19:41:50.188492514 +0200
+@@ -0,0 +1,300 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#include "dsrc.h"
++
++static class DSRCClass : public TclClass {
++ public:
++	DSRCClass() : TclClass("Queue/DSRC") {}
++	TclObject* create(int, const char*const*) {
++		return (new DSRC);
++	}
++} class_dsrc;
++
++
++
++void DSRC::reset()
++{
++	Queue::reset();
++}
++
++
++int
++DSRC::command(int argc, const char*const* argv) 
++{
++
++	return Queue::command(argc, argv);
++}
++
++void 
++DSRC::enque(Packet* p)
++{
++	
++	#ifdef DSRC_DISABLED
++		cch_->enque(p);
++		return;
++	#endif
++
++	struct hdr_cmn *ch = HDR_CMN(p);
++      	hdr_ip* iph = HDR_IP(p);
++
++	// We extract the channel number to be used for transmission from the correspondent field at the packet header.
++	// Then, we add this channel to the list of active SCH in the ChannelScheduler class
++	
++	int pkt_channel = ch->channel;
++	int type_dsrc_ = ch->type_dsrc;
++	channel_scheduler.addSCH(pkt_channel);
++
++	// We use the channel number to enqueue the packet in th proper FIFO
++	switch(type_dsrc_) {
++		case SCH_TYPE_PACKET:
++			if (pkt_channel >= 0 && pkt_channel < SCH_NUMBER)
++				sch_[pkt_channel]->enque(p);
++			break;
++	 case CCH_TYPE_PACKET:
++                       	
++			 if (pkt_channel == CCH_CHANNEL)
++				cch_->enque(p);
++                        break;
++  		 default:
++			printf("Wrong Conbimations!!! \n");
++	}		
++
++}
++
++
++Packet* DSRC::deque()
++{
++	#ifdef DSRC_DISABLED
++		return cch_->deque();
++	#endif
++
++
++	switch(current_slot_) {
++		// While dequeuing at a SCH_SLOT, we use the channel variable
++		// to start dequeuing packets from the proper queue		
++		case SCH_SLOT:
++			// If channel is equal to CCH, this means there is no active SCH.
++			if (channel == CCH_CHANNEL){
++				return NULL;
++			}
++			else //if (channel >= 0 && channel < SCH_NUMBER)
++				return sch_[channel]->deque();
++		case CCH_SLOT:
++			return cch_->deque();
++	
++		default: 
++			return NULL;
++	}
++}
++
++
++void 
++DSRC::expire() {
++
++ 	switch(current_slot_) {
++		case SCH_SLOT:	
++			signalMAC(next_slot_);
++			
++			current_slot_= next_slot_;
++			next_slot_= CCH_SLOT;			
++			
++			guard_timer_.schedule(GUARD_TIME_SLOT);		
++			break;
++		case CCH_SLOT:
++			signalMAC(next_slot_);
++
++			current_slot_= next_slot_;
++			next_slot_= SCH_SLOT;
++
++                        guard_timer_.schedule(GUARD_TIME_SLOT);
++			break;
++
++		case GUARD_SLOT:
++			signalMAC(next_slot_);
++
++			if (next_slot_ == CCH_SLOT)
++			{
++				current_slot_= next_slot_;
++				next_slot_= GUARD_SLOT;
++				
++				restartTX(current_slot_);
++	                        cch_timer_.schedule(CCH_TIME_SLOT - GUARD_TIME_SLOT);
++			}
++			else if (next_slot_ == SCH_SLOT)
++			{
++				// When GUARD_SLOT timer expires and the next slot is a SCH_SLOT, 
++				// call getNextSCH function at the ChannelScheduler to determine the channel to use next.
++				channel = channel_scheduler.getNextSCH(next_slot_);
++	
++				current_slot_= next_slot_;
++				next_slot_= GUARD_SLOT;
++
++				restartTX(current_slot_);
++	                        sch_timer_.schedule(SCH_TIME_SLOT - GUARD_TIME_SLOT);
++			}
++			
++			break;	
++	}
++
++}
++
++
++void
++DSRC::signalMAC (int next_slot)
++{
++	Mac802_11Ext * mac_ = (Mac802_11Ext*)(target_);
++	ChannelState mac_status = mac_->csmgr.getChannelState();
++
++	WirelessPhyExt * phy_ = (WirelessPhyExt*)(mac_->netif_);
++	int phy_status = phy_->getState();
++
++	if (next_slot == GUARD_SLOT) {
++		// Cancel NAV
++		if (mac_->csmgr.navTimer_->status() == TIMER_PENDING)
++			mac_->csmgr.navTimer_->cancel();
++		
++		// Cancel IFS Timer
++		if (mac_->csmgr.ifsTimer_->status() == TIMER_PENDING)
++			mac_->csmgr.ifsTimer_->cancel();
++
++		// Declare the medium busy at the MAC during GUARD_SLOT by raising the block flag
++		block();
++
++		// If the MAC is contending for the medium (BackoffRunning or BackoffPause),
++		// cancel the BackoffTimer and set the state to noBackoff and reset timer variables.OB
++		BackoffMgrState backoff_status = mac_->bkmgr.getBackoffMgrState();
++		if (((backoff_status  == BackoffRunning || backoff_status ==  BackoffPause)) && (mac_->txc.pDATA !=NULL)) {
++			
++			if (mac_->bkmgr.bkTimer_->status () == TIMER_PENDING)
++				mac_->bkmgr.bkTimer_->cancel();
++
++			mac_->bkmgr.setBackoffMgrState (noBackoff);	
++        		mac_->bkmgr.bkTimer_->startTime=-1.0;
++        		mac_->bkmgr.bkTimer_->remainingSlots_=-1;
++
++			// If PURGE is the strategy used with untransmitted packets
++			if (untrans == PURGE)
++				Packet::free(mac_->txc.pDATA);
++			else if (untrans == REINSERT) {
++			        hdr_cmn* ch = HDR_CMN(mac_->txc.pDATA);
++				ch->size() -= mac_->phymib_.getHdrLen11();	
++				enque (mac_->txc.pDATA);
++				mac_->txc.pDATA = NULL;
++			}
++		}
++		
++		
++		// Cancel reception by rasising error flag.
++		if (phy_status == RXing)
++			HDR_CMN(phy_->pkt_RX)->error() = 1;	
++	
++	}
++
++	else {
++		// Remove the block flag
++		unblock();	
++	}
++}
++
++void
++DSRC::restartTX (int current_slot)
++{
++
++	Mac802_11Ext * mac_ = (Mac802_11Ext*)(target_);
++
++	Packet *p;
++	switch(current_slot) {
++		case SCH_SLOT: 
++			if (!blocked_) {
++				if (channel == CCH_CHANNEL)
++					return ;
++				else
++					p = sch_[channel]->deque();
++
++       
++				if (p != 0) {
++                	        	blocked_ = 1;
++					mac_->bkmgr.handleBKStart(mac_->cw_);
++                        		target_->recv(p, &qh_);
++                		}
++        		}
++	
++		case CCH_SLOT: 
++			if (!blocked_) {
++				p=cch_->deque();
++        	        	if (p != 0) {
++                	        	blocked_ = 1;
++					mac_->bkmgr.handleBKStart(mac_->cw_);
++                        		target_->recv(p, &qh_);
++                		}
++        		}
++	}
++		
++}
++
++
++void
++SlotTimer::handle(Event*) {
++	handler->expire();
++}
++
++
++void
++SlotTimer::schedule(double interval) {
++	Scheduler::instance().schedule(this, &intr, interval);
++}
+diff -Naur Original/ns-2.34/dsrc/dsrc_const.h SimuTools/ns-2.34/dsrc/dsrc_const.h
+--- Original/ns-2.34/dsrc/dsrc_const.h	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/dsrc_const.h	2012-10-10 19:42:06.978548888 +0200
+@@ -0,0 +1,75 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#define SCH_NUMBER 		6
++
++#define CCH_CHANNEL		-99
++
++#define CCH_SLOT		0
++#define SCH_SLOT		1
++#define GUARD_SLOT		2
++
++#define CCH_TYPE_PACKET		0
++#define SCH_TYPE_PACKET		1
++
++
++#define CCH_TIME_SLOT		0.05 //seconds
++#define SCH_TIME_SLOT		0.05 //seconds
++#define GUARD_TIME_SLOT		0.004 //seconds
++
++#define PURGE			0
++#define REINSERT		1
+diff -Naur Original/ns-2.34/dsrc/dsrc.h SimuTools/ns-2.34/dsrc/dsrc.h
+--- Original/ns-2.34/dsrc/dsrc.h	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/dsrc.h	2012-10-10 19:41:53.218495499 +0200
+@@ -0,0 +1,159 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#ifndef ns_dsrc_h
++#define ns_dsrc_h
++
++#include <string.h>
++#include "queue.h"
++#include "config.h"
++#include "dsrc_const.h"
++#include "round_robin.h"
++#include "mac/mac-802_11Ext.h"
++#include "mac/wireless-phyExt.h"
++
++
++class DSRC;
++class SlotTimer;
++
++
++//Uncomment the following line to switch-off DSRC and use regular single channel scheme.
++//#define DSRC_DISABLED 
++
++
++
++// SlotTimer class is referred to as DSRCTimer class in Figure 3 
++// of "Modeling and Simulation of WAVE 1609.4-based Multi-channel Vehicular Ad Hoc Networks" by Ghandour et al.
++
++class SlotTimer : public Handler {
++public:
++        SlotTimer(DSRC* d) : handler(d)  {}
++	void	schedule(double interval);
++        void	handle(Event*);
++private:
++        DSRC    *handler;
++	Event	intr;
++};
++
++
++
++
++// We implement the IEEE WAVE 1609.4 protocol at the InterFace priority Queue (IFQ) layer 
++// (i.e. between the MAC and NET layers of ns2), as a subclass of the class Queue.
++// Fore more details, please refer to "Modeling and Simulation of WAVE 1609.4-based Multi-channel Vehicular Ad Hoc 
++// Networks" by Ghandour et al. 
++
++class DSRC : public Queue {
++  friend class SlotTimer;
++  public:
++
++	DSRC(): cch_timer_(this), sch_timer_(this), guard_timer_(this), channel_scheduler() { 
++		
++		for (int i = 0; i < SCH_NUMBER; i++)
++			sch_ [i] = new PacketQueue;
++		
++		cch_=  new PacketQueue;
++
++		channel = CCH_CHANNEL;
++ 
++		current_slot_= GUARD_SLOT;
++		next_slot_= CCH_SLOT;
++		
++		// Define here the strategy to adopt with Un-transmitted packets
++		untrans = REINSERT;
++		//untrans = PURGE;
++
++		#ifndef DSRC_DISABLED
++		guard_timer_.schedule(GUARD_TIME_SLOT);
++		#endif
++	}
++
++
++	~DSRC() {
++		delete sch_;
++		delete cch_;
++	}
++
++  protected:
++
++	void reset();
++	int command(int argc, const char*const* argv); 
++	void enque(Packet*);
++	void expire();
++	Packet* deque();
++
++	void signalMAC (int );
++	void restartTX (int );
++
++	PacketQueue *sch_ [SCH_NUMBER];
++	PacketQueue *cch_;
++
++	SlotTimer 	cch_timer_;
++	SlotTimer	sch_timer_;
++	SlotTimer	guard_timer_;
++
++	RoundRobin channel_scheduler;
++	int channel;
++
++	int current_slot_;
++	int next_slot_;
++
++	int untrans;
++
++};
++
++#endif
+diff -Naur Original/ns-2.34/dsrc/round_robin.cc SimuTools/ns-2.34/dsrc/round_robin.cc
+--- Original/ns-2.34/dsrc/round_robin.cc	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/round_robin.cc	2012-10-10 19:42:09.518496789 +0200
+@@ -0,0 +1,85 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#include "round_robin.h"
++
++int
++RoundRobin::getNextSCH (int slot)
++{	
++	if (slot == SCH_SLOT)
++	{
++		//If no Active Channels registered by the Application Layer.
++		//We assume that the node will stay on CCH_CHANNEL.
++		if (nbrActiveChannels == 0)
++			return CCH_CHANNEL;
++
++
++		else if (nbrActiveChannels >= 1)
++		{
++			for (int i = current_index_; ; i = (i + 1) % SCH_NUMBER)
++				if (activeSCH[i] == 1)
++				{	
++					current_index_ = (i + 1) % SCH_NUMBER;
++					return i;
++				}
++		}
++	}		
++
++	// Should not get here since this function is called only during SCH_SLOT.
++	else
++		return CCH_CHANNEL;
++}
+diff -Naur Original/ns-2.34/dsrc/round_robin.h SimuTools/ns-2.34/dsrc/round_robin.h
+--- Original/ns-2.34/dsrc/round_robin.h	1970-01-01 01:00:00.000000000 +0100
++++ SimuTools/ns-2.34/dsrc/round_robin.h	2012-10-10 19:42:12.989121045 +0200
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (C) 2012 
++ * American University of Beirut (AUB) and
++ * University of Bologna (UniBo)
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write to the Free Software Foundation, Inc.,
++ * 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
++ *
++ *
++ * The copyright of this module includes the following
++ * linking-with-specific-other-licenses addition:
++ *
++ * In addition, as a special exception, the copyright holders of
++ * this module give you permission to combine (via static or
++ * dynamic linking) this module with free software programs or
++ * libraries that are released under the GNU LGPL and with code
++ * included in the standard release of ns-2 under the Apache 2.0
++ * license or under otherwise-compatible licenses with advertising
++ * requirements (or modified versions of such code, with unchanged
++ * license).  You may copy and distribute such a system following the
++ * terms of the GNU GPL for this module and the licenses of the
++ * other code concerned, provided that you include the source code of
++ * that other code when and as the GNU GPL requires distribution of
++ * source code.
++ *
++ * Note that people who make modified versions of this module
++ * are not obligated to grant this special exception for their
++ * modified versions; it is their choice whether to do so.  The GNU
++ * General Public License gives permission to release a modified
++ * version without this exception; this exception also makes it
++ * possible to release a modified version which carries forward this
++ * exception.
++ *
++ */
++ 
++/*
++ * This code was designed and developed by:
++ * 
++ * Ali Ghandour            : ajg04@aub.edu.lb
++ * Marco Di Felice	   : difelice@cs.unibo.it
++ * 
++ * For further information see: 
++ * http://alighandour.info/wave-1609tool/
++ */
++
++
++#ifndef ns_round_robin_h
++#define ns_round_robin_h
++
++#include <string.h>
++#include "config.h"
++#include "channel_sched.h"
++
++
++//Several algorithms can be used for Channel Scheduling during SCH.
++//We present here a round-robin scheduler for completeness.
++//Others algorithms can be suggested by researchers.
++
++
++class RoundRobin : public ChannelScheduler {
++  public:
++
++	RoundRobin(): ChannelScheduler() {	
++
++		current_index_ = 0;
++	}
++
++
++	~RoundRobin() {
++	}
++
++
++	int getNextSCH (int );
++
++  protected:
++
++	int current_index_;
++};
++
++#endif
+diff -Naur Original/ns-2.34/mac/mac-802_11Ext.cc SimuTools/ns-2.34/mac/mac-802_11Ext.cc
+--- Original/ns-2.34/mac/mac-802_11Ext.cc	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/mac/mac-802_11Ext.cc	2012-10-11 16:26:09.313699376 +0200
+@@ -631,7 +631,11 @@
+ 	// check memory leak? 
+ 	if (MAC_DBG)
+ 		log("Tx", "Start");
+-	downtarget_->recv(p->copy(), this);
++
++	// **** DSRC code start **** //
++	if (p != NULL)
++		downtarget_->recv(p->copy(), this);
++	// **** DSRC code end  **** //
+ }
+ 
+ void Mac802_11Ext::handleTXEndIndication() {
+@@ -788,6 +792,9 @@
+ 	mac_=m;
+ 	pRTS=0;
+ 	pDATA=0;
++	// **** DSRC code start **** //
++	pDSRC=0;	
++	// **** DSRC code end  **** //
+ 	txc_state_=TXC_Idle;
+ 	shortretrycounter = 0;
+ 	longretrycounter = 0;
+@@ -799,6 +806,9 @@
+ 	if (mac_->MAC_DBG)
+ 		mac_->log("TXC", "msgFromUp");
+ 	pDATA=p;
++	// **** DSRC code start **** //
++	pDSRC=p->copy();
++	// **** DSRC code end  **** //
+ 	prepareMPDU(pDATA);
+ 	hdr_mac802_11* mh = HDR_MAC802_11(pDATA);
+ 	struct hdr_cmn *ch = HDR_CMN(pDATA);
+diff -Naur Original/ns-2.34/mac/mac-802_11Ext.h SimuTools/ns-2.34/mac/mac-802_11Ext.h
+--- Original/ns-2.34/mac/mac-802_11Ext.h	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/mac/mac-802_11Ext.h	2012-10-11 16:31:44.941830946 +0200
+@@ -297,17 +297,22 @@
+ 	inline ChannelState getChannelState() {
+ 		return channel_state_;
+ 	}
++	
++	// **** DSRC code start **** //
++	//Changed from Private to Public
++	//Better programming practice will be used in later releases.
++	IFSTimer *ifsTimer_;
++	NAVTimer *navTimer_;
++	void setChannelState(ChannelState newState);
++	// **** DSRC code end  **** //
++
+ protected:
+ 	void handleIFSTimer();
+ 	void handleNAVTimer();
+ private:
+ 	Mac802_11Ext * mac_;
+ 	ChannelState channel_state_;
+-	double ifs_value_;
+-	IFSTimer *ifsTimer_;
+-	NAVTimer *navTimer_;
+-
+-	void setChannelState(ChannelState newState);
++	double ifs_value_;	
+ };
+ /* ======================================================================
+  2.0 Backoff timer and BackoffMgr
+@@ -327,13 +332,19 @@
+ 	void run();
+ 	int init(int CW);
+ 	void setSlotTime(double);
++		
++	// **** DSRC code start **** //
++	//Changed from Private to Public
++	//Better programming practice will be used in later releases.	
++	double tSlot;
++	int remainingSlots_;
++	double startTime;
++	// **** DSRC code end  **** //
++	
+ protected:
+ 	void expire(Event *e);
+ private:
+-	double tSlot;
+ 	BackoffMgr * bkmgr_;
+-	int remainingSlots_;
+-	double startTime;
+ };
+ 
+ enum BackoffMgrState {noBackoff,BackoffRunning,BackoffPause};
+@@ -351,14 +362,21 @@
+ 	inline BackoffMgrState getBackoffMgrState() {
+ 		return bk_state_;
+ 	}
++	
++	
++	// **** DSRC code start **** //
++	//Changed from Private to Public
++	//Better programming practice will be used in later releases.	
++	BackoffTimer_t * bkTimer_;	
++	void setBackoffMgrState(BackoffMgrState newState);
++	// **** DSRC code end  **** //
++		
+ private:
+ 	Mac802_11Ext * mac_;
+ 	void handleBackoffTimer();
+ 	BackoffMgrState bk_state_;
+-	BackoffTimer_t * bkTimer_;
+ 	void BKDone();
+ 
+-	void setBackoffMgrState(BackoffMgrState newState);
+ };
+ 
+ 
+@@ -439,11 +457,19 @@
+ 	void checkQueue();
+ 	void prepareMPDU(Packet *p);
+ 	void generateRTSFrame(Packet *p);
++	
++	// **** DSRC code start **** //
++	// Pinter to DSRC packet	
++	Packet *pDSRC;	
+ 
++	//Changed from Private to Public
++	//Better programming practice will be used in later releases.
++	Packet *pDATA;
++	// **** DSRC code end  **** //
++	
+ private:
+ 	TXCState txc_state_;
+ 	Packet *pRTS;
+-	Packet *pDATA;
+ 	Mac802_11Ext *mac_;
+ 	TXC_CTSTimer txcCTSTimer;
+ 	TXC_SIFSTimer txcSIFSTimer;
+@@ -526,6 +552,18 @@
+ 	void handleTXEndIndication();
+ 
+ 	int MAC_DBG;
++	
++	// **** DSRC code start **** //
++	//Changed from Private and Protected to Public
++	//Better programming practice will be used in later releases.
++	BackoffMgr bkmgr;
++	ChannelStateMgr csmgr;
++	
++	TXC txc;
++	
++	PHY_MIBExt phymib_;
++	u_int32_t cw_; // Contention Window
++	// **** DSRC code end  **** //
+ 
+ protected:
+ 
+@@ -537,11 +575,6 @@
+ 	void transmit(Packet *p, TXConfirmCallback);
+ 	TXConfirmCallback txConfirmCallback_;
+ 
+-
+-	BackoffMgr bkmgr;
+-	ChannelStateMgr csmgr;
+-
+-	TXC txc;
+ 	RXC rxc;
+ 
+ 	int command(int argc, const char*const* argv);
+@@ -585,18 +618,17 @@
+ 		u_int16_t us = (u_int16_t)floor((t *= 1e6) + 0.5);
+ 		return us;
+ 	}
++	
+ 
+ protected:
+-	PHY_MIBExt phymib_;
+ 	MAC_MIBExt macmib_;
+-
+ private:
+ 
+ 	/* ============================================================
+ 	 Internal MAC State
+ 	 ============================================================ */
+ 
+-	u_int32_t cw_; // Contention Window
++	//u_int32_t cw_; // Contention Window
+ 	u_int32_t ssrc_; // STA Short Retry Count
+ 	u_int32_t slrc_; // STA Long Retry Count
+ 	double sifs_; // Short Interface Space
+diff -Naur Original/ns-2.34/mac/mac.h SimuTools/ns-2.34/mac/mac.h
+--- Original/ns-2.34/mac/mac.h	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/mac/mac.h	2012-10-11 15:33:14.911820366 +0200
+@@ -214,6 +214,14 @@
+ 			dh->hdr_type_ = type;
+ 		return dh->hdr_type();
+ 	}
++	
++	// **** DSRC code start **** //
++	//Network Inteface variable changed from Protected to Public
++	//to be used in the signalMAC method (see dsrc/dsrc.cc)
++	//Better programming practice will be used in later releases.
++	Phy *netif_;            // network interface
++	// **** DSRC code end  **** //
++
+ 
+ private:
+         void mac_log(Packet *p) {
+@@ -231,7 +239,6 @@
+ 	double delay_;		// MAC overhead
+ 	int abstract_;         //   MAC support for abstract LAN 
+         
+-	Phy *netif_;            // network interface
+         Tap *tap_;              // tap agent
+ 	LL *ll_;             	// LL this MAC is connected to
+ 	Channel *channel_;	// channel this MAC is connected to
+diff -Naur Original/ns-2.34/mac/wireless-phyExt.cc SimuTools/ns-2.34/mac/wireless-phyExt.cc
+--- Original/ns-2.34/mac/wireless-phyExt.cc	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/mac/wireless-phyExt.cc	2012-10-11 16:08:36.101986568 +0200
+@@ -111,6 +111,7 @@
+ 	state = SEARCHING;
+ 	pkt_RX = 0;
+ 	power_RX = 0;
++	
+ }
+ 
+ int WirelessPhyExt::command(int argc, const char*const* argv) {
+@@ -452,7 +453,6 @@
+         	sendCSIdleIndication();
+         }
+ 	}
+-
+ 	state = newstate;
+ }
+ 
+diff -Naur Original/ns-2.34/mac/wireless-phyExt.h SimuTools/ns-2.34/mac/wireless-phyExt.h
+--- Original/ns-2.34/mac/wireless-phyExt.h	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/mac/wireless-phyExt.h	2012-10-11 16:04:23.922447749 +0200
+@@ -177,7 +177,12 @@
+     inline double getAntennaTxGain() { return ant_->getTxGain(ant_->getX(), ant_->getY(), ant_->getZ(), lambda_); }
+     inline double getPowerMonitorThresh() { return PowerMonitorThresh_; }
+ 
+-
++	// **** DSRC code start **** //
++	//Changed from Private to Public
++	//Better programming practice will be used in later releases.	
++	Packet *pkt_RX;
++	// **** DSRC code end  **** //
++	
+ private:
+ 	// variables to be bound
+ 	double lambda_; // wavelength (m)
+@@ -207,7 +212,6 @@
+ 	PreRX_Timer preRX_Timer;
+ 	int state;
+ 
+-	Packet *pkt_RX;
+ 	double SINR_Th_RX; //SINR threshold for decode data according to the modulation scheme
+ 	double power_RX;
+ 
+diff -Naur Original/ns-2.34/Makefile.in SimuTools/ns-2.34/Makefile.in
+--- Original/ns-2.34/Makefile.in	2009-06-14 19:35:44.000000000 +0200
++++ SimuTools/ns-2.34/Makefile.in	2012-10-11 18:56:54.122148253 +0200
+@@ -328,6 +328,10 @@
+ 	wpan/p802_15_4sscs.o wpan/p802_15_4timer.o \
+ 	wpan/p802_15_4trace.o wpan/p802_15_4transac.o \
+ 	apps/pbc.o \
++	dsrc/dsrc.o \
++	dsrc/channel_sched.o \
++	dsrc/dsrc_app.o \
++	dsrc/round_robin.o \
+ 	@V_STLOBJ@
+ 
+ 
+diff -Naur Original/ns-2.34/tcl/lib/ns-default.tcl SimuTools/ns-2.34/tcl/lib/ns-default.tcl
+--- Original/ns-2.34/tcl/lib/ns-default.tcl	2009-06-14 19:35:41.000000000 +0200
++++ SimuTools/ns-2.34/tcl/lib/ns-default.tcl	2012-10-11 16:12:23.772447563 +0200
+@@ -1463,3 +1463,12 @@
+ Agent/PBC set periodicBroadcastVariance 0.1
+ Agent/PBC set modulationScheme 0
+ 
++#// **** DSRC code start **** //
++Agent/DSRCApp set packetSize_	200
++Agent/DSRCApp set modulationScheme_	0
++Agent/DSRCApp set channel_	3
++Agent/DSRCApp set interval_	0.05
++Agent/DSRCApp set type_dsrc_	0
++Agent/DSRCApp set multihop_     0
++Agent/DSRCApp set type_agent_   0
++#// **** DSRC code end  **** //
+diff -Naur Original/ns-2.34/tcl/lib/ns-packet.tcl SimuTools/ns-2.34/tcl/lib/ns-packet.tcl
+--- Original/ns-2.34/tcl/lib/ns-packet.tcl	2009-06-14 19:35:41.000000000 +0200
++++ SimuTools/ns-2.34/tcl/lib/ns-packet.tcl	2012-10-11 16:14:11.372424864 +0200
+@@ -169,6 +169,9 @@
+ 	TORA 	# routing protocol for ad-hoc networks
+ 	# AOMDV patch
+ 	AOMDV
++	#// **** DSRC code start **** //
++	DSRCApp	# Dsrc App that uses the DSRC Layer that implements IEEE 1609.4
++	#// **** DSRC code end  **** //
+ # Other:
+ 	Encap 	# common/encap.cc
+         IPinIP 	# IP encapsulation 
+diff -Naur Original/ns-2.34/trace/cmu-trace.cc SimuTools/ns-2.34/trace/cmu-trace.cc
+--- Original/ns-2.34/trace/cmu-trace.cc	2009-06-14 19:35:07.000000000 +0200
++++ SimuTools/ns-2.34/trace/cmu-trace.cc	2012-10-11 16:17:40.051820467 +0200
+@@ -97,8 +97,9 @@
+ 	pktTrc_ = pt;
+ }
+ 
+-
+-//#define LOG_POSITION
++// **** DSRC code start **** //
++#define LOG_POSITION
++// **** DSRC code end  **** //
+ 
+ //extern char* pt_names[];
+ 
+@@ -270,9 +271,13 @@
+ #endif
+ 	sprintf(pt_->buffer() + offset,
+ #ifdef LOG_POSITION
+-		"%c %.9f %d (%6.2f %6.2f) %3s %4s %d %s %d ",
++		// **** DSRC code start **** //
++		"%c %.9f %d %4.2f %4.2f %d %d %3s %d %4s %d %s %d ",
++		// **** DSRC code end  **** //
+ #else
+-		"%c %.9f _%d_ %3s %4s %d %s %d",
++		// **** DSRC code start **** //
++		"%c %.9f _%d_ %d %d  %3s %4s %d %s %d",
++		// **** DSRC code end  **** //
+ #endif
+ 		op,
+ 		Scheduler::instance().clock(),
+@@ -281,9 +286,13 @@
+                 x,
+                 y,
+ #endif
+-		tracename,
+-		why,
+-		
++		// **** DSRC code start **** //
++		ch->channel,
++		ch->type_dsrc,
++		ch->type_agent_,
++		// **** DSRC code end  **** //
++		tracename,	
++		why,	
+                 ch->uid(),                      // identifier for this event
+ 		
+ 		((ch->ptype() == PT_MAC) ? (
