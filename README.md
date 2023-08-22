@@ -15,7 +15,7 @@ This tool was especially welcomed by researchers who already have ongoing work i
 
 
 
-# Please cite the following paper when using this tool:  
+## Please cite the following paper when using this tool:  
 
 _Ali J. Ghandour, Marco Di Felice, Hassan Artail and Luciano Bononi, “Modeling and Simulation of WAVE 1609.4-based Multi-channel Vehicular Ad Hoc Networks”, 5th ACM International Conference on Simulations Tools and Techniques (SIMUTools 2012), March 19-23, 2012, Sirmione-Desenzano, Italy (Best Paper Award runner-up)._  
 
